@@ -8,6 +8,7 @@ This folder contains cleaned, individual BiggerPockets demand-mining teardowns f
 - `002-repair-proof-owner-verification.md` - repair proof, receipts, photos, owner verification, move-out evidence, and receipt capture.
 - `003-maintenance-markups-approval-trust.md` - maintenance markups, approval thresholds, repair fee transparency, and PM fee trust.
 - `004-vendor-license-insurance-contractor-authority.md` - vendor license/insurance checks, COI freshness, workers comp, additional insured status, owner-selected vendors, and contractor authority/liability.
+- `005-pm-scorecards-communication-maintenance-oversight.md` - PM report cards, owner communication, maintenance oversight, inspections, PM replacement handoffs, and due diligence checklists.
 
 ## Evidence Boundary
 
