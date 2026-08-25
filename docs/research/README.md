@@ -9,6 +9,7 @@ This folder contains public-safe research artifacts used to shape VendorRadar di
 - `competitive/003-vendorpm.md` - cleaned competitive teardown dossier.
 - `demand/reddit/searches-001-006.md` - synthesized Reddit demand-mining dossier for searches 1-6.
 - `demand/reddit/searches-007-010.md` - synthesized Reddit demand-mining dossier for searches 7-10, covering contractor recommendations, approved vendor lists, onboarding, and performance tracking.
+- `demand/biggerpockets/` - cleaned individual BiggerPockets demand-mining teardowns used to reduce Reddit-only bias and validate owner/operator language.
 
 ## Publication Boundary
 
