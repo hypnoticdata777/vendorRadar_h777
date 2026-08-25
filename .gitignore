@@ -1,0 +1,15 @@
+# Private/raw research evidence
+*.pdf
+*.docx
+*.doc
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.heic
+
+# Local/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

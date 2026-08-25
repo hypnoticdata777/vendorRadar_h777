@@ -1,0 +1,1636 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Software Research Loop Workbook</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #111716;
+      --ink: #ecf1ee;
+      --muted: #a7b3af;
+      --panel: #1a2220;
+      --panel-2: #202b28;
+      --field: #121917;
+      --line: #34423e;
+      --brand: #4fb7a3;
+      --brand-2: #7aa7ff;
+      --accent: #d99a57;
+      --ok: #6fd18d;
+      --warn: #e0ae57;
+      --bad: #ef8279;
+      --unknown: #aaa4d8;
+      --shadow: 0 18px 46px rgba(0, 0, 0, 0.34);
+      --radius: 8px;
+      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: var(--font);
+      line-height: 1.5;
+    }
+
+    button, input, textarea, select {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .app {
+      min-height: 100vh;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(17, 23, 22, 0.96);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(12px);
+    }
+
+    .topbar-inner {
+      width: min(1360px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 14px 0;
+      display: grid;
+      gap: 12px;
+    }
+
+    .brand-row,
+    .toolbar,
+    .nav-row,
+    .meter-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-row {
+      justify-content: space-between;
+    }
+
+    .title-lockup h1 {
+      margin: 0;
+      font-size: clamp(1.35rem, 3vw, 2.25rem);
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .title-lockup p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      max-width: 74ch;
+    }
+
+    .autosave {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .autosave-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: var(--ok);
+      box-shadow: 0 0 0 4px rgba(47, 125, 74, 0.12);
+    }
+
+    .btn {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink);
+      border-radius: 7px;
+      padding: 9px 12px;
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-decoration: none;
+      transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      border-color: color-mix(in srgb, var(--brand), var(--line) 35%);
+    }
+
+    .btn.primary {
+      background: var(--brand);
+      border-color: var(--brand);
+      color: #071211;
+    }
+
+    .btn.danger {
+      color: var(--bad);
+      border-color: color-mix(in srgb, var(--bad), var(--line) 45%);
+    }
+
+    .btn.ghost {
+      background: transparent;
+    }
+
+    .file-label {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .file-label input {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .nav-row {
+      gap: 8px;
+    }
+
+    .nav-link {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 999px;
+      color: var(--ink);
+      padding: 8px 12px;
+      text-decoration: none;
+      font-size: 0.94rem;
+    }
+
+    .nav-link:hover {
+      border-color: var(--brand);
+    }
+
+    .meter {
+      flex: 1 1 210px;
+      min-width: 180px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 9px 10px;
+    }
+
+    .meter-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .meter-track {
+      height: 8px;
+      background: #111917;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 7px;
+    }
+
+    .meter-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--brand), var(--brand-2));
+      border-radius: inherit;
+      transition: width 0.18s ease;
+    }
+
+    main {
+      width: min(1360px, calc(100% - 32px));
+      margin: 28px auto 70px;
+      display: grid;
+      gap: 24px;
+    }
+
+    section {
+      scroll-margin-top: 220px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 24px;
+      align-items: stretch;
+      padding: 28px;
+      background:
+        linear-gradient(135deg, rgba(79, 183, 163, 0.16), rgba(122, 167, 255, 0.1)),
+        var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .hero h2,
+    .section-title h2 {
+      margin: 0;
+      font-size: clamp(1.2rem, 2.3vw, 1.75rem);
+      line-height: 1.18;
+      letter-spacing: 0;
+    }
+
+    .hero p,
+    .section-title p {
+      margin: 8px 0 0;
+      color: var(--muted);
+    }
+
+    .loop-steps {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .loop-step {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .step-number {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: inline-grid;
+      place-items: center;
+      color: #fff;
+      background: var(--brand);
+      font-weight: 500;
+    }
+
+    .quick-start {
+      background: rgba(26, 34, 32, 0.72);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+    }
+
+    .quick-start h3 {
+      margin: 0 0 10px;
+      font-size: 1rem;
+    }
+
+    .quick-start ul {
+      margin: 0;
+      padding-left: 20px;
+      color: var(--muted);
+    }
+
+    .section-shell {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: clip;
+    }
+
+    .section-title {
+      padding: 22px 24px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel-2);
+      display: grid;
+      gap: 12px;
+    }
+
+    .section-body {
+      padding: 24px;
+      display: grid;
+      gap: 24px;
+    }
+
+    .subsection {
+      display: grid;
+      gap: 14px;
+      padding-top: 2px;
+    }
+
+    .subsection h3 {
+      margin: 0;
+      font-size: 1.05rem;
+      letter-spacing: 0;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 14px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .span-2 { grid-column: span 2; }
+    .span-3 { grid-column: span 3; }
+    .span-4 { grid-column: span 4; }
+    .span-5 { grid-column: span 5; }
+    .span-6 { grid-column: span 6; }
+    .span-7 { grid-column: span 7; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: 1 / -1; }
+
+    label,
+    .field-label {
+      font-weight: 500;
+      color: var(--ink);
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    input[type="text"],
+    input[type="url"],
+    input[type="date"],
+    input[type="number"],
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: var(--field);
+      color: var(--ink);
+      border-radius: 7px;
+      padding: 10px 11px;
+      min-height: 42px;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 118px;
+    }
+
+    textarea.tall {
+      min-height: 210px;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus,
+    button:focus {
+      outline: 3px solid rgba(36, 80, 164, 0.18);
+      outline-offset: 2px;
+    }
+
+    .check-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .check {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--field);
+    }
+
+    .check input {
+      margin-top: 4px;
+      flex: 0 0 auto;
+      width: 17px;
+      height: 17px;
+      accent-color: var(--brand);
+    }
+
+    .stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .entry {
+      border: 1px solid var(--line);
+      background: var(--field);
+      border-radius: var(--radius);
+      padding: 16px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .entry-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .entry-title {
+      margin: 0;
+      font-size: 1rem;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      color: var(--muted);
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+    }
+
+    .evidence-confirmed { border-left: 4px solid var(--ok); }
+    .evidence-claim { border-left: 4px solid var(--brand-2); }
+    .evidence-inference { border-left: 4px solid var(--accent); }
+    .evidence-unknown { border-left: 4px solid var(--unknown); }
+
+    .score-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(120px, 1fr));
+      gap: 12px;
+    }
+
+    .score-card {
+      border: 1px solid var(--line);
+      background: var(--field);
+      border-radius: var(--radius);
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .score-card input[type="range"] {
+      width: 100%;
+      accent-color: var(--brand);
+    }
+
+    .score-value {
+      font-weight: 500;
+      color: var(--brand);
+    }
+
+    .callout {
+      border-left: 4px solid var(--brand);
+      background: color-mix(in srgb, var(--panel-2), #000 12%);
+      padding: 14px 16px;
+      border-radius: 0 var(--radius) var(--radius) 0;
+      color: var(--muted);
+    }
+
+    .gate {
+      border: 1px solid color-mix(in srgb, var(--brand), var(--line) 55%);
+      background: color-mix(in srgb, var(--panel-2), #000 16%);
+      border-radius: var(--radius);
+      padding: 18px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .gate-status {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 1.05rem;
+      font-weight: 500;
+    }
+
+    .gate-light {
+      width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      background: var(--warn);
+      box-shadow: 0 0 0 6px rgba(164, 101, 23, 0.12);
+    }
+
+    .gate.ready .gate-light {
+      background: var(--ok);
+      box-shadow: 0 0 0 6px rgba(47, 125, 74, 0.12);
+    }
+
+    .utility-note {
+      min-height: 24px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .print-only {
+      display: none;
+    }
+
+    @media (max-width: 980px) {
+      .hero {
+        grid-template-columns: 1fr;
+      }
+
+      .check-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .score-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .span-2,
+      .span-3,
+      .span-4,
+      .span-5,
+      .span-6,
+      .span-7,
+      .span-8 {
+        grid-column: span 6;
+      }
+    }
+
+    @media (max-width: 680px) {
+      .topbar-inner,
+      main {
+        width: min(100% - 20px, 1360px);
+      }
+
+      .hero,
+      .section-body,
+      .section-title {
+        padding: 18px;
+      }
+
+      .span-2,
+      .span-3,
+      .span-4,
+      .span-5,
+      .span-6,
+      .span-7,
+      .span-8,
+      .span-12 {
+        grid-column: 1 / -1;
+      }
+
+      .check-grid,
+      .score-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media print {
+      :root {
+        --bg: #fff;
+        --ink: #111;
+        --muted: #4c4c4c;
+        --panel: #fff;
+        --panel-2: #f4f4f4;
+        --line: #cfcfcf;
+        --shadow: none;
+      }
+
+      body {
+        background: #fff;
+      }
+
+      .topbar {
+        position: static;
+        background: #fff;
+      }
+
+      .toolbar,
+      .nav-row,
+      .btn,
+      .file-label,
+      .entry .remove-entry {
+        display: none !important;
+      }
+
+      main {
+        width: 100%;
+        margin: 18px 0;
+      }
+
+      .hero,
+      .section-shell,
+      .entry,
+      .score-card,
+      .check,
+      .gate {
+        box-shadow: none;
+        break-inside: avoid;
+      }
+
+      textarea {
+        min-height: 72px;
+      }
+
+      .print-only {
+        display: block;
+      }
+
+      section {
+        scroll-margin-top: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand-row">
+          <div class="title-lockup">
+            <h1>Software Research Loop Workbook</h1>
+            <p>Reusable competitor teardown, demand/problem mining, and dossier-readiness tracker for VendorRadar, TechSync, TurnFlowHome, or any future product.</p>
+          </div>
+          <div class="autosave" aria-live="polite"><span class="autosave-dot"></span><span id="saveStatus">Autosave ready</span></div>
+        </div>
+
+        <div class="toolbar" aria-label="Workbook actions">
+          <button class="btn primary" type="button" id="exportJson">Export JSON</button>
+          <label class="btn file-label">Import JSON<input type="file" id="importJson" accept="application/json"></label>
+          <button class="btn" type="button" id="printWorkbook">Print / Save PDF</button>
+          <button class="btn" type="button" id="duplicateWorkbook">Duplicate Workflow</button>
+          <button class="btn danger" type="button" id="resetWorkbook">Reset Blank</button>
+        </div>
+
+        <nav class="nav-row" aria-label="Section navigation">
+          <a class="nav-link" href="#start">How to use</a>
+          <a class="nav-link" href="#setup">Setup</a>
+          <a class="nav-link" href="#teardown">Competitor teardown</a>
+          <a class="nav-link" href="#demand">Demand/problem mining</a>
+          <a class="nav-link" href="#dossier">Dossier readiness</a>
+        </nav>
+
+        <div class="meter-row" aria-label="Progress indicators">
+          <div class="meter">
+            <div class="meter-head"><span>Overall</span><strong id="overallPct">0%</strong></div>
+            <div class="meter-track"><div class="meter-fill" id="overallFill"></div></div>
+          </div>
+          <div class="meter">
+            <div class="meter-head"><span>Teardown</span><strong id="teardownPct">0%</strong></div>
+            <div class="meter-track"><div class="meter-fill" id="teardownFill"></div></div>
+          </div>
+          <div class="meter">
+            <div class="meter-head"><span>Demand mining</span><strong id="demandPct">0%</strong></div>
+            <div class="meter-track"><div class="meter-fill" id="demandFill"></div></div>
+          </div>
+          <div class="meter">
+            <div class="meter-head"><span>Dossier readiness</span><strong id="dossierPct">0%</strong></div>
+            <div class="meter-track"><div class="meter-fill" id="dossierFill"></div></div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section id="start" class="hero">
+        <div>
+          <h2>How to Use This Research Loop</h2>
+          <p>Use one copy of this workbook per product, competitor, or demand-mining batch. Write generously, classify every important claim, and keep unknowns visible until they are confirmed or rejected.</p>
+          <div class="loop-steps">
+            <div class="loop-step">
+              <span class="step-number">1</span>
+              <div><strong>Teardown what exists.</strong> Capture live evidence, public claims, workflows, pricing gates, UX defects, data models, moats, and the lessons worth stealing or avoiding.</div>
+            </div>
+            <div class="loop-step">
+              <span class="step-number">2</span>
+              <div><strong>Mine demand.</strong> Read postings, communities, support threads, and buyer language. Look for repeated paid pain, not just interesting complaints.</div>
+            </div>
+            <div class="loop-step">
+              <span class="step-number">3</span>
+              <div><strong>Generate the dossier only when ready.</strong> Reconcile contradictions, inventory evidence, list unknowns, then open the gate for a polished research artifact.</div>
+            </div>
+          </div>
+        </div>
+        <aside class="quick-start">
+          <h3>Simple rhythm</h3>
+          <ul>
+            <li>Start with the setup block so exports have context.</li>
+            <li>Add numbered findings as you go, even rough ones.</li>
+            <li>Use evidence labels honestly: confirmed, claim, inference, unknown.</li>
+            <li>When the same pain appears repeatedly in demand mining, turn it into a requirement.</li>
+            <li>Do not generate the dossier until the readiness gate is green.</li>
+          </ul>
+          <p class="utility-note" id="utilityNote"></p>
+        </aside>
+      </section>
+
+      <section id="setup" class="section-shell">
+        <div class="section-title">
+          <h2>Research Setup</h2>
+          <p>Context that travels with every export and makes the later dossier usable.</p>
+        </div>
+        <div class="section-body">
+          <div class="grid">
+            <div class="field span-4">
+              <label for="productName">Product / software being researched</label>
+              <input id="productName" data-store="setup.productName" type="text" placeholder="VendorRadar, TechSync, TurnFlowHome...">
+            </div>
+            <div class="field span-4">
+              <label for="researchTarget">Competitor, market, or demand batch</label>
+              <input id="researchTarget" data-store="setup.researchTarget" type="text" placeholder="Vetabid teardown, Upwork PM posts...">
+            </div>
+            <div class="field span-2">
+              <label for="researchDate">Research date</label>
+              <input id="researchDate" data-store="setup.researchDate" type="date">
+            </div>
+            <div class="field span-2">
+              <label for="researcher">Researcher</label>
+              <input id="researcher" data-store="setup.researcher" type="text" placeholder="Researcher">
+            </div>
+            <div class="field span-6">
+              <label for="coreQuestion">Core research question</label>
+              <textarea id="coreQuestion" data-store="setup.coreQuestion" placeholder="What are we trying to learn or decide?"></textarea>
+            </div>
+            <div class="field span-6">
+              <label for="dossierAudience">Audience for final dossier</label>
+              <textarea id="dossierAudience" data-store="setup.dossierAudience" placeholder="Future product planning, requirements harvest, investor memo, build/no-build decision..."></textarea>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="teardown" class="section-shell">
+        <div class="section-title">
+          <h2>1. Competitor Teardown</h2>
+          <p>Deep, practical dissection of the competitor or adjacent product. The goal is not a summary. The goal is reusable product intelligence.</p>
+        </div>
+        <div class="section-body">
+          <div class="subsection">
+            <h3>Teardown Checklist</h3>
+            <div class="check-grid">
+              <label class="check"><input type="checkbox" data-store="checks.teardown.liveWalkthrough"> Live product walkthrough completed</label>
+              <label class="check"><input type="checkbox" data-store="checks.teardown.publicClaims"> Public claims captured separately from evidence</label>
+              <label class="check"><input type="checkbox" data-store="checks.teardown.screenshots"> Screenshots or evidence notes captured</label>
+              <label class="check"><input type="checkbox" data-store="checks.teardown.workflows"> Buyer and vendor workflows mapped</label>
+              <label class="check"><input type="checkbox" data-store="checks.teardown.pricing"> Pricing, gates, and paywalls checked</label>
+              <label class="check"><input type="checkbox" data-store="checks.teardown.requirements"> Requirements harvested for our product</label>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h3>Evidence Classification Ledger</h3>
+            <p class="hint">Use this any time a statement may later become a product requirement, competitive claim, or dossier finding.</p>
+            <div class="stack" id="evidenceList"></div>
+            <button class="btn" type="button" data-add="evidence">Add Evidence Item</button>
+          </div>
+
+          <div class="subsection">
+            <h3>Numbered Findings</h3>
+            <p class="hint">Capture findings as numbered statements. Classify confidence and tie each one to evidence notes.</p>
+            <div class="stack" id="findingList"></div>
+            <button class="btn" type="button" data-add="finding">Add Numbered Finding</button>
+          </div>
+
+          <div class="subsection">
+            <h3>Product and Domain Model</h3>
+            <div class="grid">
+              <div class="field span-6">
+                <label for="icp">ICP / customer segments</label>
+                <textarea id="icp" class="tall" data-store="teardown.icp" placeholder="Who appears to buy, use, influence, or benefit? Include roles, company types, size, urgency, and buying context."></textarea>
+              </div>
+              <div class="field span-6">
+                <label for="domainModel">Product/domain model</label>
+                <textarea id="domainModel" class="tall" data-store="teardown.domainModel" placeholder="Core nouns and relationships: projects, properties, vendors, bids, profiles, users, jobs, approvals, messages, files..."></textarea>
+              </div>
+              <div class="field span-6">
+                <label for="dataModel">Data-model observations</label>
+                <textarea id="dataModel" data-store="teardown.dataModel" placeholder="Visible schemas, fields, filters, entities, status transitions, hidden assumptions, required data quality."></textarea>
+              </div>
+              <div class="field span-6">
+                <label for="integrations">Integrations and ecosystem</label>
+                <textarea id="integrations" data-store="teardown.integrations" placeholder="Native integrations, imports/exports, APIs, email, CRM, PMS, accounting, calendars, documents, marketplace connections."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h3>Workflow Mapping</h3>
+            <div class="grid">
+              <div class="field span-6">
+                <label for="buyerWorkflow">Buyer-side workflow</label>
+                <textarea id="buyerWorkflow" class="tall" data-store="teardown.buyerWorkflow" placeholder="How a buyer discovers, evaluates, requests, compares, selects, communicates, pays, and repeats."></textarea>
+              </div>
+              <div class="field span-6">
+                <label for="vendorWorkflow">Vendor-side workflow</label>
+                <textarea id="vendorWorkflow" class="tall" data-store="teardown.vendorWorkflow" placeholder="How a vendor joins, profiles, receives opportunities, bids, communicates, wins, fulfills, and renews."></textarea>
+              </div>
+              <div class="field span-12">
+                <label for="workflowGaps">Workflow gaps, friction, and edge cases</label>
+                <textarea id="workflowGaps" data-store="teardown.workflowGaps" placeholder="Where does the flow break, confuse, hide work, require manual handling, or create trust issues?"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h3>Market and Product Assessment</h3>
+            <div class="grid">
+              <div class="field span-6">
+                <label for="pricingPaywalls">Pricing, plans, paywalls, and monetization</label>
+                <textarea id="pricingPaywalls" data-store="teardown.pricingPaywalls" placeholder="Visible plans, hidden prices, trial gates, listing fees, transaction fees, freemium limits, lead charges, sales-led moments."></textarea>
+              </div>
+              <div class="field span-6">
+                <label for="moat">Moat, liquidity, and defensibility</label>
+                <textarea id="moat" data-store="teardown.moat" placeholder="Network effects, data advantage, marketplace liquidity, switching costs, trust/reputation, integrations, operational barriers."></textarea>
+              </div>
+              <div class="field span-4">
+                <label for="strengths">Strengths</label>
+                <textarea id="strengths" data-store="teardown.strengths" placeholder="What works well and why it matters."></textarea>
+              </div>
+              <div class="field span-4">
+                <label for="weaknesses">Weaknesses</label>
+                <textarea id="weaknesses" data-store="teardown.weaknesses" placeholder="Strategic, product, UX, trust, liquidity, or positioning weaknesses."></textarea>
+              </div>
+              <div class="field span-4">
+                <label for="uxDefects">UX defects and anomalies</label>
+                <textarea id="uxDefects" data-store="teardown.uxDefects" placeholder="Broken states, confusing copy, form problems, empty states, missing feedback, odd flows."></textarea>
+              </div>
+              <div class="field span-6">
+                <label for="risks">Risks and caveats</label>
+                <textarea id="risks" data-store="teardown.risks" placeholder="Research limitations, legal/compliance risks, false signals, market risk, implementation risk, operational risk."></textarea>
+              </div>
+              <div class="field span-6">
+                <label for="openQuestions">Open research questions</label>
+                <textarea id="openQuestions" data-store="teardown.openQuestions" placeholder="What still needs screenshots, live confirmation, customer validation, pricing checks, or expert review?"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h3>Lessons and Requirements Harvest</h3>
+            <div class="grid">
+              <div class="field span-4">
+                <label for="stealLessons">Steal lessons</label>
+                <textarea id="stealLessons" class="tall" data-store="teardown.stealLessons" placeholder="Patterns, workflows, copy, data structures, trust signals, onboarding moments, filters, reports, or monetization ideas worth adapting."></textarea>
+              </div>
+              <div class="field span-4">
+                <label for="avoidLessons">Avoid lessons</label>
+                <textarea id="avoidLessons" class="tall" data-store="teardown.avoidLessons" placeholder="Things that felt confusing, risky, brittle, unattractive, or misaligned with our product."></textarea>
+              </div>
+              <div class="field span-4">
+                <label for="vendorRadarRequirements">VendorRadar requirements harvested</label>
+                <textarea id="vendorRadarRequirements" class="tall" data-store="teardown.vendorRadarRequirements" placeholder="Turn observations into candidate requirements, jobs-to-be-done, MVP needs, POC scope, and roadmap ideas."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h3>Scores</h3>
+            <div class="score-grid">
+              <div class="score-card">
+                <label for="scoreDemand">Demand signal <span class="score-value" data-score-label="scoreDemand">5</span>/10</label>
+                <input id="scoreDemand" data-store="scores.scoreDemand" type="range" min="0" max="10" value="5">
+              </div>
+              <div class="score-card">
+                <label for="scoreUX">UX quality <span class="score-value" data-score-label="scoreUX">5</span>/10</label>
+                <input id="scoreUX" data-store="scores.scoreUX" type="range" min="0" max="10" value="5">
+              </div>
+              <div class="score-card">
+                <label for="scoreMoat">Moat strength <span class="score-value" data-score-label="scoreMoat">5</span>/10</label>
+                <input id="scoreMoat" data-store="scores.scoreMoat" type="range" min="0" max="10" value="5">
+              </div>
+              <div class="score-card">
+                <label for="scoreBuildability">Buildability for us <span class="score-value" data-score-label="scoreBuildability">5</span>/10</label>
+                <input id="scoreBuildability" data-store="scores.scoreBuildability" type="range" min="0" max="10" value="5">
+              </div>
+              <div class="score-card">
+                <label for="scoreOpportunity">Opportunity quality <span class="score-value" data-score-label="scoreOpportunity">5</span>/10</label>
+                <input id="scoreOpportunity" data-store="scores.scoreOpportunity" type="range" min="0" max="10" value="5">
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="demand" class="section-shell">
+        <div class="section-title">
+          <h2>2. Demand / Problem Mining</h2>
+          <p>Read what buyers are already asking for, paying for, complaining about, or duct-taping together manually.</p>
+        </div>
+        <div class="section-body">
+          <div class="subsection">
+            <h3>Mining Checklist</h3>
+            <div class="check-grid">
+              <label class="check"><input type="checkbox" data-store="checks.demand.sourcesChosen"> Sources/platforms selected</label>
+              <label class="check"><input type="checkbox" data-store="checks.demand.buyerWords"> Exact buyer wording preserved</label>
+              <label class="check"><input type="checkbox" data-store="checks.demand.paymentSignals"> Budget/payment signals captured</label>
+              <label class="check"><input type="checkbox" data-store="checks.demand.patterns"> Repeated patterns grouped</label>
+              <label class="check"><input type="checkbox" data-store="checks.demand.abstractions"> SaaS abstractions drafted</label>
+              <label class="check"><input type="checkbox" data-store="checks.demand.followups"> Follow-up research listed</label>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h3>Demand Source Plan</h3>
+            <div class="grid">
+              <div class="field span-4">
+                <label for="sourcePlatforms">Source/platforms</label>
+                <textarea id="sourcePlatforms" data-store="demand.sourcePlatforms" placeholder="Upwork, Reddit, Facebook groups, G2 reviews, app marketplaces, job boards, procurement forums, support communities..."></textarea>
+              </div>
+              <div class="field span-4">
+                <label for="searchQueries">Search queries and filters</label>
+                <textarea id="searchQueries" data-store="demand.searchQueries" placeholder="Keywords, categories, budget filters, location, recency, role, industry."></textarea>
+              </div>
+              <div class="field span-4">
+                <label for="samplingPlan">Sampling plan</label>
+                <textarea id="samplingPlan" data-store="demand.samplingPlan" placeholder="How many posts, which dates, which platforms, what counts as relevant or irrelevant."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="subsection">
+            <h3>Problem Post Capture</h3>
+            <p class="hint">Use one entry per posting, thread, review, RFP, or buyer request. Keep exact wording when it reveals urgency or willingness to pay.</p>
+            <div class="stack" id="demandPostList"></div>
+            <button class="btn" type="button" data-add="demandPost">Add Problem Post</button>
+          </div>
+
+          <div class="subsection">
+            <h3>Pattern Synthesis</h3>
+            <div class="grid">
+              <div class="field span-6">
+                <label for="repeatedPatterns">Repeated patterns</label>
+                <textarea id="repeatedPatterns" class="tall" data-store="demand.repeatedPatterns" placeholder="Problems that appear across multiple posts, sources, industries, or buyer roles."></textarea>
+              </div>
+              <div class="field span-6">
+                <label for="manualLaborPaid">Manual labor being paid for</label>
+                <textarea id="manualLaborPaid" class="tall" data-store="demand.manualLaborPaid" placeholder="What people currently pay freelancers, staff, agencies, or contractors to do by hand."></textarea>
+              </div>
+              <div class="field span-6">
+                <label for="saasAbstractions">Potential SaaS abstraction</label>
+                <textarea id="saasAbstractions" data-store="demand.saasAbstractions" placeholder="What could be standardized, automated, templated, routed, monitored, or turned into a workflow product?"></textarea>
+              </div>
+              <div class="field span-6">
+                <label for="followupResearch">Follow-up research</label>
+                <textarea id="followupResearch" data-store="demand.followupResearch" placeholder="Who to interview, what to verify, what market/category to compare, what proof is still weak."></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="dossier" class="section-shell">
+        <div class="section-title">
+          <h2>3. Dossier Generation Readiness</h2>
+          <p>This is the final quality gate before turning raw research into a polished DOCX/PDF dossier.</p>
+        </div>
+        <div class="section-body">
+          <div class="subsection">
+            <h3>Completeness Checklist</h3>
+            <div class="check-grid">
+              <label class="check"><input type="checkbox" data-store="checks.dossier.setupComplete"> Setup and research question complete</label>
+              <label class="check"><input type="checkbox" data-store="checks.dossier.findingsNumbered"> Findings are numbered and classified</label>
+              <label class="check"><input type="checkbox" data-store="checks.dossier.evidenceInventory"> Evidence inventory is complete enough</label>
+              <label class="check"><input type="checkbox" data-store="checks.dossier.unknownsListed"> Unknowns are explicitly listed</label>
+              <label class="check"><input type="checkbox" data-store="checks.dossier.contradictionsResolved"> Contradictions/corrections reconciled</label>
+              <label class="check"><input type="checkbox" data-store="checks.dossier.requirementsHarvested"> Requirements harvest is usable</label>
+              <label class="check"><input type="checkbox" data-store="checks.dossier.demandSynthesized"> Demand patterns synthesized</label>
+              <label class="check"><input type="checkbox" data-store="checks.dossier.screenshotsReferenced"> Screenshots/evidence notes referenced</label>
+              <label class="check"><input type="checkbox" data-store="checks.dossier.noInventedFacts"> No unknowns collapsed into facts</label>
+            </div>
+          </div>
+
+          <div class="grid">
+            <div class="field span-6">
+              <label for="unresolvedUnknowns">Unresolved unknowns</label>
+              <textarea id="unresolvedUnknowns" class="tall" data-store="dossier.unresolvedUnknowns" placeholder="What we still do not know. Keep this honest."></textarea>
+            </div>
+            <div class="field span-6">
+              <label for="contradictionsCorrections">Contradictions and corrections</label>
+              <textarea id="contradictionsCorrections" class="tall" data-store="dossier.contradictionsCorrections" placeholder="Claims that conflicted with live evidence, old assumptions that changed, corrections to earlier notes."></textarea>
+            </div>
+            <div class="field span-6">
+              <label for="evidenceInventory">Evidence inventory</label>
+              <textarea id="evidenceInventory" data-store="dossier.evidenceInventory" placeholder="Screenshots, URLs, emails, sign-up flows, pricing pages, support docs, marketplace posts, review links."></textarea>
+            </div>
+            <div class="field span-6">
+              <label for="dossierOutline">Dossier outline notes</label>
+              <textarea id="dossierOutline" data-store="dossier.dossierOutline" placeholder="Sections the final artifact should include, important emphasis, items not to forget."></textarea>
+            </div>
+          </div>
+
+          <div class="gate" id="readyGate">
+            <div class="gate-status"><span class="gate-light"></span><span id="gateText">Not ready yet</span></div>
+            <p class="hint" id="gateHint">Complete the dossier checklist and resolve major unknowns before generating the dossier.</p>
+            <label class="check">
+              <input type="checkbox" id="readyToGenerate" data-store="dossier.readyToGenerate">
+              Ready to generate dossier
+            </label>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      const STORAGE_KEY = "softwareResearchLoopWorkbook.v1:" + window.location.pathname;
+      const today = new Date().toISOString().slice(0, 10);
+      const emptyState = () => ({
+        meta: {
+          version: 1,
+          savedAt: "",
+          exportedAt: ""
+        },
+        setup: {
+          productName: "",
+          researchTarget: "",
+          researchDate: today,
+          researcher: "",
+          coreQuestion: "",
+          dossierAudience: ""
+        },
+        checks: {
+          teardown: {},
+          demand: {},
+          dossier: {}
+        },
+        teardown: {},
+        demand: {},
+        dossier: {
+          readyToGenerate: false
+        },
+        scores: {
+          scoreDemand: "5",
+          scoreUX: "5",
+          scoreMoat: "5",
+          scoreBuildability: "5",
+          scoreOpportunity: "5"
+        },
+        evidence: [
+          blankEvidence()
+        ],
+        findings: [
+          blankFinding(1)
+        ],
+        demandPosts: [
+          blankDemandPost()
+        ]
+      });
+
+      function blankEvidence() {
+        return {
+          label: "",
+          source: "",
+          classification: "Confirmed Live Evidence",
+          notes: "",
+          screenshotNotes: "",
+          dateChecked: today
+        };
+      }
+
+      function blankFinding(number) {
+        return {
+          number: number || 1,
+          title: "",
+          classification: "Confirmed Live Evidence",
+          confidence: "Medium",
+          finding: "",
+          evidenceNotes: "",
+          implication: ""
+        };
+      }
+
+      function blankDemandPost() {
+        return {
+          platform: "",
+          url: "",
+          dateSeen: today,
+          customerProblem: "",
+          buyerWording: "",
+          currentWorkaround: "",
+          budgetSignal: "",
+          frequencyUrgency: "",
+          repeatedPattern: "",
+          existingTools: "",
+          manualLabor: "",
+          saasAbstraction: "",
+          confidence: "Medium",
+          followup: ""
+        };
+      }
+
+      let state = loadState();
+      const status = document.getElementById("saveStatus");
+      const note = document.getElementById("utilityNote");
+
+      function loadState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return emptyState();
+          const loaded = JSON.parse(raw);
+          return mergeState(emptyState(), loaded);
+        } catch (error) {
+          return emptyState();
+        }
+      }
+
+      function mergeState(base, incoming) {
+        Object.keys(incoming || {}).forEach((key) => {
+          if (Array.isArray(incoming[key])) {
+            base[key] = incoming[key];
+          } else if (incoming[key] && typeof incoming[key] === "object") {
+            base[key] = mergeState(base[key] || {}, incoming[key]);
+          } else {
+            base[key] = incoming[key];
+          }
+        });
+        if (!base.evidence.length) base.evidence = [blankEvidence()];
+        if (!base.findings.length) base.findings = [blankFinding(1)];
+        if (!base.demandPosts.length) base.demandPosts = [blankDemandPost()];
+        return base;
+      }
+
+      function getPath(path) {
+        return path.split(".").reduce((obj, part) => obj && obj[part], state);
+      }
+
+      function setPath(path, value) {
+        const parts = path.split(".");
+        let obj = state;
+        parts.slice(0, -1).forEach((part) => {
+          if (!obj[part] || typeof obj[part] !== "object") obj[part] = {};
+          obj = obj[part];
+        });
+        obj[parts[parts.length - 1]] = value;
+      }
+
+      function saveState(message) {
+        state.meta.savedAt = new Date().toISOString();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        status.textContent = message || "Saved locally";
+        note.textContent = "Last local save: " + new Date().toLocaleString();
+        updateProgress();
+      }
+
+      function bindStoredFields() {
+        document.querySelectorAll("[data-store]").forEach((el) => {
+          const path = el.dataset.store;
+          const value = getPath(path);
+          if (el.type === "checkbox") {
+            el.checked = Boolean(value);
+          } else if (value !== undefined && value !== null) {
+            el.value = value;
+          }
+          if (el.dataset.boundStore === "true") return;
+          el.dataset.boundStore = "true";
+          el.addEventListener("input", () => {
+            setPath(path, el.type === "checkbox" ? el.checked : el.value);
+            if (el.type === "range") updateScoreLabels();
+            saveState("Autosaved");
+            updateGate();
+          });
+          el.addEventListener("change", () => {
+            setPath(path, el.type === "checkbox" ? el.checked : el.value);
+            if (el.type === "range") updateScoreLabels();
+            saveState("Autosaved");
+            updateGate();
+          });
+        });
+      }
+
+      function evidenceClass(value) {
+        if (value === "Confirmed Live Evidence") return "evidence-confirmed";
+        if (value === "Public Claim") return "evidence-claim";
+        if (value === "Inference") return "evidence-inference";
+        return "evidence-unknown";
+      }
+
+      function renderEvidence() {
+        const list = document.getElementById("evidenceList");
+        list.innerHTML = "";
+        state.evidence.forEach((item, index) => {
+          const entry = document.createElement("article");
+          entry.className = "entry " + evidenceClass(item.classification);
+          entry.innerHTML = `
+            <div class="entry-head">
+              <h4 class="entry-title">Evidence ${index + 1} <span class="badge">${item.classification || "Unclassified"}</span></h4>
+              <button class="btn danger remove-entry" type="button" data-remove-evidence="${index}">Remove</button>
+            </div>
+            <div class="grid">
+              <div class="field span-4">
+                <label>Label</label>
+                <input type="text" data-array="evidence" data-index="${index}" data-field="label" value="${escapeAttr(item.label)}" placeholder="Signup email, pricing page, project form...">
+              </div>
+              <div class="field span-4">
+                <label>Source / URL / location</label>
+                <input type="text" data-array="evidence" data-index="${index}" data-field="source" value="${escapeAttr(item.source)}" placeholder="URL, screenshot file, email subject, page name...">
+              </div>
+              <div class="field span-2">
+                <label>Classification</label>
+                <select data-array="evidence" data-index="${index}" data-field="classification">
+                  ${classificationOptions(item.classification)}
+                </select>
+              </div>
+              <div class="field span-2">
+                <label>Date checked</label>
+                <input type="date" data-array="evidence" data-index="${index}" data-field="dateChecked" value="${escapeAttr(item.dateChecked)}">
+              </div>
+              <div class="field span-6">
+                <label>Evidence notes</label>
+                <textarea data-array="evidence" data-index="${index}" data-field="notes" placeholder="What exactly did we see? What does it prove, and what does it not prove?">${escapeHtml(item.notes)}</textarea>
+              </div>
+              <div class="field span-6">
+                <label>Screenshot / artifact notes</label>
+                <textarea data-array="evidence" data-index="${index}" data-field="screenshotNotes" placeholder="Screenshot names, timestamps, visual anomalies, missing captures, where to find the artifact later.">${escapeHtml(item.screenshotNotes)}</textarea>
+              </div>
+            </div>
+          `;
+          list.appendChild(entry);
+        });
+      }
+
+      function renderFindings() {
+        const list = document.getElementById("findingList");
+        list.innerHTML = "";
+        state.findings.forEach((item, index) => {
+          const entry = document.createElement("article");
+          entry.className = "entry " + evidenceClass(item.classification);
+          entry.innerHTML = `
+            <div class="entry-head">
+              <h4 class="entry-title">Finding #${item.number || index + 1} <span class="badge">${item.confidence || "Medium"} confidence</span></h4>
+              <button class="btn danger remove-entry" type="button" data-remove-finding="${index}">Remove</button>
+            </div>
+            <div class="grid">
+              <div class="field span-2">
+                <label>Number</label>
+                <input type="number" min="1" data-array="findings" data-index="${index}" data-field="number" value="${escapeAttr(item.number || index + 1)}">
+              </div>
+              <div class="field span-4">
+                <label>Finding title</label>
+                <input type="text" data-array="findings" data-index="${index}" data-field="title" value="${escapeAttr(item.title)}" placeholder="Short, memorable statement">
+              </div>
+              <div class="field span-3">
+                <label>Evidence class</label>
+                <select data-array="findings" data-index="${index}" data-field="classification">
+                  ${classificationOptions(item.classification)}
+                </select>
+              </div>
+              <div class="field span-3">
+                <label>Confidence</label>
+                <select data-array="findings" data-index="${index}" data-field="confidence">
+                  ${optionList(["High", "Medium", "Low"], item.confidence)}
+                </select>
+              </div>
+              <div class="field span-6">
+                <label>Finding</label>
+                <textarea data-array="findings" data-index="${index}" data-field="finding" placeholder="State the finding clearly. Avoid burying the point.">${escapeHtml(item.finding)}</textarea>
+              </div>
+              <div class="field span-6">
+                <label>Evidence notes</label>
+                <textarea data-array="findings" data-index="${index}" data-field="evidenceNotes" placeholder="What evidence supports this? Link to evidence ledger numbers if helpful.">${escapeHtml(item.evidenceNotes)}</textarea>
+              </div>
+              <div class="field span-12">
+                <label>Implication for our product</label>
+                <textarea data-array="findings" data-index="${index}" data-field="implication" placeholder="Requirement, risk, opportunity, positioning lesson, or follow-up research.">${escapeHtml(item.implication)}</textarea>
+              </div>
+            </div>
+          `;
+          list.appendChild(entry);
+        });
+      }
+
+      function renderDemandPosts() {
+        const list = document.getElementById("demandPostList");
+        list.innerHTML = "";
+        state.demandPosts.forEach((item, index) => {
+          const entry = document.createElement("article");
+          entry.className = "entry";
+          entry.innerHTML = `
+            <div class="entry-head">
+              <h4 class="entry-title">Problem Post ${index + 1} <span class="badge">${item.confidence || "Medium"} confidence</span></h4>
+              <button class="btn danger remove-entry" type="button" data-remove-demand-post="${index}">Remove</button>
+            </div>
+            <div class="grid">
+              <div class="field span-3">
+                <label>Source / platform</label>
+                <input type="text" data-array="demandPosts" data-index="${index}" data-field="platform" value="${escapeAttr(item.platform)}" placeholder="Upwork, Reddit, G2, job board...">
+              </div>
+              <div class="field span-5">
+                <label>URL or reference</label>
+                <input type="text" data-array="demandPosts" data-index="${index}" data-field="url" value="${escapeAttr(item.url)}" placeholder="Link, post title, screenshot note">
+              </div>
+              <div class="field span-2">
+                <label>Date seen</label>
+                <input type="date" data-array="demandPosts" data-index="${index}" data-field="dateSeen" value="${escapeAttr(item.dateSeen)}">
+              </div>
+              <div class="field span-2">
+                <label>Confidence</label>
+                <select data-array="demandPosts" data-index="${index}" data-field="confidence">
+                  ${optionList(["High", "Medium", "Low"], item.confidence)}
+                </select>
+              </div>
+              <div class="field span-6">
+                <label>Exact customer problem</label>
+                <textarea data-array="demandPosts" data-index="${index}" data-field="customerProblem" placeholder="What do they need solved?">${escapeHtml(item.customerProblem)}</textarea>
+              </div>
+              <div class="field span-6">
+                <label>Buyer wording</label>
+                <textarea data-array="demandPosts" data-index="${index}" data-field="buyerWording" placeholder="Paste exact phrases that reveal pain, urgency, category language, or willingness to pay.">${escapeHtml(item.buyerWording)}</textarea>
+              </div>
+              <div class="field span-4">
+                <label>Current workaround</label>
+                <textarea data-array="demandPosts" data-index="${index}" data-field="currentWorkaround" placeholder="Spreadsheet, freelancer, assistant, Zapier, email, custom script, manual calling...">${escapeHtml(item.currentWorkaround)}</textarea>
+              </div>
+              <div class="field span-4">
+                <label>Budget / payment signal</label>
+                <textarea data-array="demandPosts" data-index="${index}" data-field="budgetSignal" placeholder="Budget, hourly rate, project size, recurring spend, hiring signal, urgency language.">${escapeHtml(item.budgetSignal)}</textarea>
+              </div>
+              <div class="field span-4">
+                <label>Frequency / urgency</label>
+                <textarea data-array="demandPosts" data-index="${index}" data-field="frequencyUrgency" placeholder="One-time, weekly, every property, every vendor, deadline, compliance, revenue at risk.">${escapeHtml(item.frequencyUrgency)}</textarea>
+              </div>
+              <div class="field span-4">
+                <label>Repeated pattern</label>
+                <textarea data-array="demandPosts" data-index="${index}" data-field="repeatedPattern" placeholder="What broader pattern does this belong to?">${escapeHtml(item.repeatedPattern)}</textarea>
+              </div>
+              <div class="field span-4">
+                <label>Existing tools mentioned</label>
+                <textarea data-array="demandPosts" data-index="${index}" data-field="existingTools" placeholder="Software they use, hate, migrate from, integrate with, or compare against.">${escapeHtml(item.existingTools)}</textarea>
+              </div>
+              <div class="field span-4">
+                <label>Manual labor being paid for</label>
+                <textarea data-array="demandPosts" data-index="${index}" data-field="manualLabor" placeholder="What human work could become workflow software?">${escapeHtml(item.manualLabor)}</textarea>
+              </div>
+              <div class="field span-6">
+                <label>Potential SaaS abstraction</label>
+                <textarea data-array="demandPosts" data-index="${index}" data-field="saasAbstraction" placeholder="How this could become a reusable feature, workflow, automation, marketplace, or alerting system.">${escapeHtml(item.saasAbstraction)}</textarea>
+              </div>
+              <div class="field span-6">
+                <label>Follow-up research</label>
+                <textarea data-array="demandPosts" data-index="${index}" data-field="followup" placeholder="Questions to ask, people to interview, source to verify, competitor to check.">${escapeHtml(item.followup)}</textarea>
+              </div>
+            </div>
+          `;
+          list.appendChild(entry);
+        });
+      }
+
+      function classificationOptions(selected) {
+        return optionList(["Confirmed Live Evidence", "Public Claim", "Inference", "Unknown"], selected);
+      }
+
+      function optionList(options, selected) {
+        return options.map((option) => `<option value="${escapeAttr(option)}"${option === selected ? " selected" : ""}>${escapeHtml(option)}</option>`).join("");
+      }
+
+      function escapeHtml(value) {
+        return String(value || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      function escapeAttr(value) {
+        return escapeHtml(value).replace(/"/g, "&quot;");
+      }
+
+      function bindArrayFields() {
+        document.querySelectorAll("[data-array]").forEach((el) => {
+          el.addEventListener("input", updateArrayField);
+          el.addEventListener("change", updateArrayField);
+        });
+      }
+
+      function updateArrayField(event) {
+        const el = event.target;
+        const collection = el.dataset.array;
+        const index = Number(el.dataset.index);
+        const field = el.dataset.field;
+        state[collection][index][field] = el.value;
+        if (field === "classification" || field === "confidence" || field === "number") {
+          renderDynamic();
+        }
+        saveState("Autosaved");
+      }
+
+      function bindEntryButtons() {
+        document.querySelectorAll("[data-add]").forEach((button) => {
+          button.addEventListener("click", () => {
+            const type = button.dataset.add;
+            if (type === "evidence") state.evidence.push(blankEvidence());
+            if (type === "finding") state.findings.push(blankFinding(state.findings.length + 1));
+            if (type === "demandPost") state.demandPosts.push(blankDemandPost());
+            renderDynamic();
+            saveState("Entry added");
+          });
+        });
+
+        document.addEventListener("click", (event) => {
+          const button = event.target.closest("button");
+          if (!button) return;
+          if (button.dataset.removeEvidence !== undefined) {
+            removeEntry("evidence", Number(button.dataset.removeEvidence), blankEvidence);
+          }
+          if (button.dataset.removeFinding !== undefined) {
+            removeEntry("findings", Number(button.dataset.removeFinding), () => blankFinding(1));
+          }
+          if (button.dataset.removeDemandPost !== undefined) {
+            removeEntry("demandPosts", Number(button.dataset.removeDemandPost), blankDemandPost);
+          }
+        });
+      }
+
+      function removeEntry(collection, index, fallbackFactory) {
+        if (state[collection].length === 1) {
+          state[collection] = [fallbackFactory()];
+        } else {
+          state[collection].splice(index, 1);
+        }
+        if (collection === "findings") {
+          state.findings.forEach((finding, idx) => {
+            if (!finding.number) finding.number = idx + 1;
+          });
+        }
+        renderDynamic();
+        saveState("Entry removed");
+      }
+
+      function renderDynamic() {
+        renderEvidence();
+        renderFindings();
+        renderDemandPosts();
+        bindArrayFields();
+      }
+
+      function updateScoreLabels() {
+        document.querySelectorAll("[data-score-label]").forEach((label) => {
+          const input = document.getElementById(label.dataset.scoreLabel);
+          label.textContent = input ? input.value : "5";
+        });
+      }
+
+      function filled(value) {
+        return Boolean(String(value || "").trim());
+      }
+
+      function countFilled(paths) {
+        return paths.reduce((count, path) => count + (filled(getPath(path)) ? 1 : 0), 0);
+      }
+
+      function countChecked(prefix) {
+        return Object.values(getPath(prefix) || {}).filter(Boolean).length;
+      }
+
+      function progressFor(kind) {
+        if (kind === "teardown") {
+          const fields = [
+            "teardown.icp", "teardown.domainModel", "teardown.dataModel", "teardown.buyerWorkflow",
+            "teardown.vendorWorkflow", "teardown.pricingPaywalls", "teardown.strengths", "teardown.weaknesses",
+            "teardown.uxDefects", "teardown.moat", "teardown.stealLessons", "teardown.avoidLessons",
+            "teardown.vendorRadarRequirements"
+          ];
+          const evidenceScore = state.evidence.filter((item) => filled(item.notes) || filled(item.source)).length ? 2 : 0;
+          const findingScore = state.findings.filter((item) => filled(item.finding)).length ? 2 : 0;
+          return pct(countFilled(fields) + countChecked("checks.teardown") + evidenceScore + findingScore, fields.length + 6 + 4);
+        }
+        if (kind === "demand") {
+          const fields = [
+            "demand.sourcePlatforms", "demand.searchQueries", "demand.samplingPlan", "demand.repeatedPatterns",
+            "demand.manualLaborPaid", "demand.saasAbstractions", "demand.followupResearch"
+          ];
+          const postScore = state.demandPosts.filter((item) => filled(item.customerProblem) || filled(item.buyerWording)).length ? 3 : 0;
+          return pct(countFilled(fields) + countChecked("checks.demand") + postScore, fields.length + 6 + 3);
+        }
+        if (kind === "dossier") {
+          const fields = [
+            "dossier.unresolvedUnknowns", "dossier.contradictionsCorrections", "dossier.evidenceInventory", "dossier.dossierOutline"
+          ];
+          return pct(countFilled(fields) + countChecked("checks.dossier") + (state.dossier.readyToGenerate ? 3 : 0), fields.length + 9 + 3);
+        }
+        const setupFields = ["setup.productName", "setup.researchTarget", "setup.researchDate", "setup.researcher", "setup.coreQuestion"];
+        return pct(countFilled(setupFields), setupFields.length);
+      }
+
+      function pct(done, total) {
+        return Math.max(0, Math.min(100, Math.round((done / total) * 100)));
+      }
+
+      function updateProgress() {
+        const teardown = progressFor("teardown");
+        const demand = progressFor("demand");
+        const dossier = progressFor("dossier");
+        const setup = progressFor("setup");
+        const overall = Math.round((teardown + demand + dossier + setup) / 4);
+        setMeter("teardown", teardown);
+        setMeter("demand", demand);
+        setMeter("dossier", dossier);
+        setMeter("overall", overall);
+        updateGate();
+      }
+
+      function setMeter(id, value) {
+        document.getElementById(id + "Pct").textContent = value + "%";
+        document.getElementById(id + "Fill").style.width = value + "%";
+      }
+
+      function updateGate() {
+        const gate = document.getElementById("readyGate");
+        const gateText = document.getElementById("gateText");
+        const gateHint = document.getElementById("gateHint");
+        const checklistDone = countChecked("checks.dossier") >= 9;
+        const manuallyReady = Boolean(state.dossier.readyToGenerate);
+        const ready = checklistDone && manuallyReady;
+        gate.classList.toggle("ready", ready);
+        gateText.textContent = ready ? "Ready to generate dossier" : "Not ready yet";
+        gateHint.textContent = ready
+          ? "The readiness gate is green. Export JSON or print/save PDF before generating the final dossier."
+          : "Complete the dossier checklist, reconcile contradictions, and explicitly mark the workbook ready.";
+      }
+
+      function exportJson() {
+        state.meta.exportedAt = new Date().toISOString();
+        const product = state.setup.productName || "software";
+        const target = state.setup.researchTarget || "research";
+        const fileSafe = (product + "-" + target + "-workbook")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, "");
+        const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = fileSafe + ".json";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        saveState("JSON exported");
+      }
+
+      function importJson(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const imported = JSON.parse(reader.result);
+            state = mergeState(emptyState(), imported);
+            saveState("Imported and saved");
+            initialize(false);
+          } catch (error) {
+            alert("That file could not be imported. Please choose a JSON export from this workbook.");
+          }
+        };
+        reader.readAsText(file);
+      }
+
+      function duplicateWorkflow() {
+        const name = prompt("Name for the duplicated workflow product or target:", state.setup.productName || "");
+        if (name === null) return;
+        const keepResearch = confirm("Keep the current notes in the duplicate? Choose Cancel to create a blank copy with only the setup style.");
+        if (keepResearch) {
+          state.setup.productName = name.trim() || state.setup.productName;
+          state.setup.researchTarget = "";
+          state.setup.researchDate = today;
+        } else {
+          const researcher = state.setup.researcher;
+          state = emptyState();
+          state.setup.productName = name.trim();
+          state.setup.researcher = researcher;
+        }
+        saveState("Duplicated workflow");
+        initialize(false);
+      }
+
+      function resetWorkbook() {
+        const ok = confirm("Reset this workbook to a blank template? Export JSON first if you want to keep the current research.");
+        if (!ok) return;
+        state = emptyState();
+        saveState("Reset blank");
+        initialize(false);
+      }
+
+      function bindActions() {
+        document.getElementById("exportJson").addEventListener("click", exportJson);
+        document.getElementById("importJson").addEventListener("change", (event) => importJson(event.target.files[0]));
+        document.getElementById("printWorkbook").addEventListener("click", () => window.print());
+        document.getElementById("duplicateWorkbook").addEventListener("click", duplicateWorkflow);
+        document.getElementById("resetWorkbook").addEventListener("click", resetWorkbook);
+      }
+
+      function initialize(firstRun) {
+        if (!state.setup.researchDate) state.setup.researchDate = today;
+        renderDynamic();
+        bindStoredFields();
+        updateScoreLabels();
+        updateProgress();
+        if (firstRun) {
+          bindEntryButtons();
+          bindActions();
+          saveState("Autosave ready");
+        }
+      }
+
+      initialize(true);
+    })();
+  </script>
+</body>
+</html>
